@@ -1,9 +1,12 @@
-import React, { ChangeEvent, useState, useEffect, KeyboardEventHandler } from 'react';
+import React, { ChangeEvent, useState, KeyboardEventHandler, useEffect } from 'react';
 import TodoItem from './TodoItem';
 import { Container, TextField, Stack, Modal, Typography, Box } from '@mui/material';
 import ButtonCustom from '../common/ButtonCustom';
 import AddTodoItem from './AddTodoItem';
 import uuid from 'react-uuid';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { addNewTask, updateTask, deleteTask } from '../../redux/taskList';
+import { stringify } from 'querystring';
 
 interface dataTasks {
     index: string,
@@ -24,20 +27,17 @@ const style = {
 };
 
 const TodoList = () => {
-    const [newTask, setNewTask] = useState('');
-    const [listTask, setListTask] = useState<dataTasks[]>([]);
+    const dispatch = useAppDispatch();
 
-    const [taskEdit, setTaskEdit] = useState({
-        value: '',
-        index: '',
-        status: 'pending'
-    })
+    const [newTask, setNewTask] = useState('');
+
+    const [taskEdit, setTaskEdit] = useState<{id: string, title: string, status:string}>({id: '', title: '', status: ''})
 
     const [open, setOpen] = React.useState(false);
+
     const handleOpen = () => setOpen(true);
     const handleClose = () => {
-        setOpen(false)
-        setTaskEdit({value: '', index: '', status: 'pending'})
+        setOpen(false);
     };
 
     const handleOnKeyDown = (e: React.KeyboardEvent<object>) => { 
@@ -51,72 +51,38 @@ const TodoList = () => {
         if(target.id === 'task_name') {
             setNewTask(e.currentTarget?.value ?? '');
         } else {
-            setTaskEdit(prevState => ({...prevState, value: e.currentTarget?.value ?? ''}));
+            setTaskEdit(prevState => ({...prevState, title: e.currentTarget?.value ?? ''}));
         }
     }
 
     const handleAddTask = () => {
         if (!newTask) return;
-
-        const taskLocalStorage = localStorage.getItem('tasks');
-        if (taskLocalStorage) {
-            const currentTask = JSON.parse(taskLocalStorage);
-            currentTask.push({index: uuid(), value: newTask, status: 'pending'});
-            localStorage.setItem('tasks', JSON.stringify(currentTask));
-            listTask.push({index: uuid(), value: newTask, status: 'pending'});
-
-        } else {
-            localStorage.setItem('tasks', JSON.stringify([{index: uuid(), value: newTask, status: 'pending'}]));
-            listTask.push({index: uuid(), value: newTask, status: 'pending'});
-        }
+        const newTaskObj = { status: 'pending', title: newTask, id: uuid() }
+        dispatch(addNewTask(newTaskObj));
 
         setNewTask('');
     }
 
-    const handleDeleteTask = (item: dataTasks, index: number) => {
-        let newListTask = listTask.filter((value, num) => {
-            return num !== index
-        })
-        localStorage.setItem('tasks', JSON.stringify(newListTask))
-        setListTask(newListTask);
+    const handleDeleteTask = (item: {id: string}) => {
+        dispatch(deleteTask(item));
     }
 
 
-    const handleOpenModalEdit = (item: dataTasks, index: number) => {
+    const handleOpenModalEdit = (item:{id: string, title: string, status: string}) => {
         setOpen(true);
-        setTaskEdit({value: item.value, index: item.index, status: item.status})
+        setTaskEdit(item)
     }
 
     const handleEditTask = () => {
-        let newListTask = listTask.map(item => {
-            if(item.index === taskEdit.index) {
-                return {...item, value: taskEdit.value};
-            }
-            return item;
-        });
-        setListTask(newListTask);
-        localStorage.setItem('tasks', JSON.stringify(newListTask));
+        dispatch(updateTask(taskEdit))
         setOpen(false);
     }
 
-    const handleCheckComplete = (e:React.ChangeEvent<HTMLInputElement>, item: dataTasks) => {
-        let newListTask = listTask.map(data => {
-            if(data.index === item.index) {
-                return {...data, status: data.status == 'pending' ? 'completed' : 'pending'};
-            }
-            return data;
-        });
-        setListTask(newListTask);
-        localStorage.setItem('tasks', JSON.stringify(newListTask));
+    const handleCheckComplete = (e:React.ChangeEvent<HTMLInputElement>, item: {id: string, status: string, title: string}) => {
+        console.log('item', item);
+        const newTaskUpdate = {id: item.id, status: item.status == 'pending' ? 'completed' : 'pending', title: item.title}
+        dispatch(updateTask(newTaskUpdate));
     }
-
-
-    useEffect(() => {
-        const tasks = localStorage.getItem('tasks')
-        if (tasks) {
-            setListTask(JSON.parse(tasks));
-        }
-    }, []);
 
     return (
         <Container
@@ -138,7 +104,6 @@ const TodoList = () => {
             />
 
             <TodoItem
-                data={listTask}
                 handleOnDelete={handleDeleteTask}
                 handleOnEdit={handleOpenModalEdit}
                 handleCheckComplete={handleCheckComplete}
@@ -164,7 +129,7 @@ const TodoList = () => {
                             id="task_name_edit"
                             label="Task Name"
                             variant="outlined"
-                            value={taskEdit.value}
+                            value={taskEdit.title}
                             onChange={handleChangeInput}
                         />
                         <ButtonCustom

@@ -1,24 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Stack, Checkbox, Typography } from '@mui/material';
 import ButtonCustom from '../common/ButtonCustom';
-
-interface dataTasks {
-    index: string
-    value: string
-    status: string
-}
+import { useAppDispatch, useAppSelector } from '../../hooks';
 
 interface Props {
-    data: dataTasks[]
-    handleOnDelete(item: dataTasks, index: number): void
-    handleOnEdit(item: dataTasks, index: number): void
-    handleCheckComplete(e: React.ChangeEvent<HTMLInputElement>, item: dataTasks): void
+    handleOnDelete(item: {id: string}): void
+    handleOnEdit(item: object): void
+    handleCheckComplete(e: React.ChangeEvent<HTMLInputElement>, item: object): void
 }
 
-const TodoItem: React.FC<Props> = ({ data, handleOnDelete, handleOnEdit, handleCheckComplete  }) => {
+const TodoItem: React.FC<Props> = ({ handleOnDelete, handleOnEdit, handleCheckComplete  }) => {
+    const listTask = useAppSelector((state) => state.task.taskList);
+
+    useEffect(() => {
+        localStorage.setItem('tasks', JSON.stringify(listTask));
+    }, [listTask])
+
     return (
         <>
-            {data.map((item, index) => (
+            {listTask.map((item, index) => (
                 <Box
                     key={index}
                     sx={{
@@ -45,7 +45,7 @@ const TodoItem: React.FC<Props> = ({ data, handleOnDelete, handleOnEdit, handleC
                                 variant="h4"
                                 sx={item.status === 'pending' ? {} : {textDecoration: 'line-through'}}
                             >
-                                {item.value}
+                                {item.title}
                             </Typography>
                         </Stack>
                         <Stack
@@ -55,12 +55,12 @@ const TodoItem: React.FC<Props> = ({ data, handleOnDelete, handleOnEdit, handleC
                             <ButtonCustom
                                 title='Delete'
                                 colorBtn='error'
-                                handleOnclick={() => handleOnDelete(item, index)}
+                                handleOnclick={() => handleOnDelete({id: item.id})}
                             />
                             <ButtonCustom
                                 title='Edit'
                                 colorBtn='success'
-                                handleOnclick={() => handleOnEdit(item, index)}
+                                handleOnclick={() => handleOnEdit(item)}
                             />
                         </Stack>
                     </Stack>
